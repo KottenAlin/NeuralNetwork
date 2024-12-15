@@ -8,6 +8,19 @@ print("NeuralNetwork.py is imported")
 
 hej = 1
 
+def plot_data(data, labels):
+    plt.scatter(data[:, 0], data[:, 1], c=labels, cmap='bwr', alpha=0.5)
+    #circle = plt.Circle((0, 0), radius, color='blue', fill=False)
+    line = plt.Line2D([-1, 1], [0, 1], color='blue', linestyle='--')
+    
+    #plt.gca().add_artist(circle)
+    plt.gca().add_artist(line)
+    plt.title('Training Data')
+    plt.xlabel('X')
+    plt.ylabel('Y')
+    plt.show()
+    
+
 #os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
 # Generate training data
@@ -33,10 +46,22 @@ def generate_linear_data(num_points):
     
     return np.array(data), np.array(labels)
 
+def generate_quadratic_data(num_points):
+    data = []
+    labels = []
+    for _ in range(num_points):
+        x, y = np.random.uniform(-1, 1, 2)
+        label = 0 if y >= x**2 else 1
+        data.append([x, y])
+        labels.append(label)
+    
+    return np.array(data), np.array(labels)
 # Parameters
 radius = 0.5
 num_points = 1000
-data, labels = generate_circle_data(radius, num_points)
+data, labels = generate_quadratic_data(num_points)
+
+plot_data(data, labels)
 
 # Load MNIST dataset
 
@@ -57,25 +82,14 @@ labels = train_labels[:num_points] '''
 # Generate and normalize data
 
 
-def plot_data(data, labels):
-    plt.scatter(data[:, 0], data[:, 1], c=labels, cmap='bwr', alpha=0.5)
-    circle = plt.Circle((0, 0), radius, color='blue', fill=False)
-    #line = plt.Line2D([-1, 1], [0, 1], color='blue', linestyle='--')
-    
-    plt.gca().add_artist(circle)
-    #plt.gca().add_artist(line)
-    plt.title('Training Data')
-    plt.xlabel('X')
-    plt.ylabel('Y')
-    plt.show()
-    
+
 
     
 #print("First data point:", data[0], "Label:", labels[0])
 
 
 class NeuralNetwork:
-    def __init__(self, input_size, hidden_size, output_size, hidden_layers=1 , learning_rate=0.1,  ):
+    def __init__(self, input_size, hidden_size, output_size, hidden_layers=1 , learning_rate=0.03):
         self.input_size = input_size # inputs size is 2
         self.hidden_size = hidden_size
         self.output_size = output_size
@@ -135,7 +149,8 @@ class NeuralNetwork:
         # trans_data -> (1000, 20) weights_hidden_output -> (20, 1) Bias_hidden_output -> (1,)
 
         lin_trans_output = np.dot(trans_data, self.weights_hidden_output) + self.bias_hidden_output
-        
+
+        test, sig = 2 * (labels.reshape(-1, 1) - output), self.sigmoid_derivative(self.sigmoid(lin_trans_output))
         d_output_bias = np.mean(2 * (labels.reshape(-1, 1) - output) * self.sigmoid_derivative(self.sigmoid(lin_trans_output)), axis=0) #
         
         d_output_weights = np.mean(2 * (labels.reshape(-1, 1) - output) * self.sigmoid_derivative(self.sigmoid(lin_trans_output)) * trans_data, axis=0) # sigmoid(lin_trans[-1])) 
@@ -153,19 +168,21 @@ class NeuralNetwork:
         # lin_trans_input -> (1000, 20) weights_input_hidden -> (2, 20) Bias_input_hidden -> (20,)
         #TODO use np.dot instead of * for matrix multiplication
         if self.hidden_layers > 1:
-            multi = multi * self.sigmoid_derivative(self.sigmoid(lin_trans_input))* self.hidden_layers_weights[0]
+            multi = np.dot(multi, self.hidden_layers_weights[0].T) * self.sigmoid_derivative(self.sigmoid(lin_trans_input))
         else:
-            multi = multi * np.dot(self.sigmoid_derivative(self.sigmoid(lin_trans_input)),self.weights_input_hidden.T)
-        
-        d_input_bias = 2 * np.mean((labels.reshape(-1, 1) - output) * self.sigmoid_derivative(self.sigmoid(lin_trans_input)) * multi)
-        d_input_weights = 2 * np.mean((labels.reshape(-1, 1) - output) * self.sigmoid_derivative(self.sigmoid(lin_trans_input)) * multi * data)
+            multi = multi * self.sigmoid_derivative(self.sigmoid(lin_trans_output)) * self.weights_hidden_output.T
+            #multi = np.dot(multi, self.weights_input_hidden.T) * self.sigmoid_derivative(self.sigmoid(lin_trans_input))
+        #d_input_bias = np.mean(2*(labels.reshape(-1,1)-output) * self.sigmoid_derivative(self.sigmoid(lin_trans_input)) * multi, axis=0)
+        d_input_bias = 2 * (np.mean(labels.reshape(-1, 1) - output, axis=0)) * np.mean(self.sigmoid_derivative(self.sigmoid(lin_trans_input)), axis=0) * np.mean(multi, axis=0)
+        mean_multi, sig_2 = np.mean(multi, axis=0) , self.sigmoid_derivative(self.sigmoid(lin_trans_input))
+        d_input_weights = 2 * np.mean((labels.reshape(-1, 1) - output) * self.sigmoid_derivative(self.sigmoid(lin_trans_input)) * multi, axis=0).reshape(-1, 1) * np.mean(data, axis=0).reshape(1, -1)
         
         self.bias_hidden_output += d_output_bias * self.learning_rate # update bias for output layer
         self.weights_hidden_output += d_output_weights.reshape(-1, 1)* self.learning_rate # update weights for output layer
         for i in range(self.hidden_layers - 1):
             self.hidden_layers_biases[i] += d_hidden_bias[i] * self.learning_rate
             self.hidden_layers_weights[i] += d_hidden_weights[i] * self.learning_rate
-        self.weights_input_hidden += d_input_weights * self.learning_rate
+        self.weights_input_hidden += d_input_weights.T * self.learning_rate
         self.bias_input_hidden += d_input_bias * self.learning_rate
         
 
@@ -176,19 +193,23 @@ class NeuralNetwork:
         #plot_data(data, outputs)
         #print ("data", data[0])
         #print("Outputs:", outputs)
-        #print("error1", self.cost(labels, outputs)) 
-
-        for i in range(10):
+        #print("error1", self.cost(labels, outputs))
+        
+        plot_data(data, outputs)
+        losses = []
+        for i in range(epochs):
             outputs = self.forward(data)
             
             self.backward(data, labels, outputs)
-
-        #print("error2", self.cost(labels, self.forward(data)))
-        print("mean error", np.mean(self.cost(labels, self.forward(data))))
-
-
+            loss = np.mean(self.cost(labels, outputs))
+            losses.append(loss)
+            
+            if epochs % 100 == 0:
+                print("mean error", loss)
         outputs = self.forward(data)
         plot_data(data, outputs)
+        return losses
+
         '''error = self.backward(data, labels, output)
         total_error += np.sum(error)
         average_error = total_error / len(data)
@@ -270,7 +291,14 @@ os.system('cls' if os.name == 'nt' else 'clear')
 input_length = 2
 NN = NeuralNetwork(input_length, 20, 1) # create a neural network with 2 input neurons, 20 hidden neurons, and 1 output neuron
 # NN.testdata(data, labels)
-NN.train(data, labels, 100)
+losses = NN.train(data, labels, 10000)
+
+plt.plot(losses)
+plt.title('Training Loss')
+plt.xlabel('Epochs')
+plt.ylabel('Loss')
+plt.show()
+
 # NN.testdata(data, labels)
 #plotNetwork(NN)
 
