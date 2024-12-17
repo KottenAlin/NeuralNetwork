@@ -1,8 +1,8 @@
 import requests
 import torch
 
-#url = 'https://raw.githubusercontent.com/karpathy/char-rnn/master/data/tinyshakespeare/input.txt'
-#response = requests.get(url)
+url = 'https://raw.githubusercontent.com/karpathy/char-rnn/master/data/tinyshakespeare/input.txt'
+response = requests.get(url)
 
 '''with open('sample.txt', 'wb') as file:
     file.write(response.content) # write the content of the response to a new file
