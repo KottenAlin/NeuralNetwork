@@ -113,7 +113,9 @@ class NeuralNetwork:
         return np.square(labels.reshape(-1, 1) - outputs)
 
     def backward(self, labels):
-        m = labels.shape[0]
+        m = labels.shape[0] # number of samples
+        
+        # Calculate output layer delta
         delta = (self.activations[-1] - labels.reshape(-1, 1)) * self.relu_derivative(self.z_values[-1])
         
         # Initialize gradients

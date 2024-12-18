@@ -1,0 +1,7 @@
+numpy
+pandas
+matplotlib
+torch
+colorama
+seaborn
+#scikit-learn (only required fo the unused models)

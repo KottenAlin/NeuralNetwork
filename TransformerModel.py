@@ -2,9 +2,9 @@ import torch
 import torch.nn as nn
 from torch.nn import functional as F
 from colorama import init, Fore
-import seaborn as sns
 import torch
 import os
+import seaborn as sns
 init()  # Initialize colorama
 
 # hyperparameters
@@ -185,7 +185,7 @@ class TransformerLanguageModel(nn.Module):
         self.position_embedding_table = nn.Embedding(block_size, n_embd)
         self.blocks = nn.Sequential(*[Block(n_embd, n_head=n_head) for _ in range(n_layer)])
         self.ln_f = nn.LayerNorm(n_embd)  # final layer norm
-        self.lm_head = nn.Linear(n_embd, vocab_size)
+        self.lm_head = nn.Linear(n_embd, vocab_size) # language model head (output layer)
 
     def forward(self, context, targets=None):
         batch_size, seq_len = context.shape
@@ -399,5 +399,5 @@ def test_word_model():
 
 
 if __name__ == '__main__':
-    test_word_model()
+    main()
     
